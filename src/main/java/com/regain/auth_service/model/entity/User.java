@@ -53,6 +53,7 @@ public class User {
 
     private String codeActive;
 
+    private boolean isBlock;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "role_id")

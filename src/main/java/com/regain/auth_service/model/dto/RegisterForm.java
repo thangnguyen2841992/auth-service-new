@@ -21,5 +21,4 @@ public class RegisterForm {
     private String birthDate;
     private int gender;
     private String address;
-    private List<Role> roles;
 }

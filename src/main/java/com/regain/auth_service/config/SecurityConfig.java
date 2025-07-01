@@ -1,6 +1,11 @@
 package com.regain.auth_service.config;
 
+import com.regain.auth_service.model.entity.Role;
+import com.regain.auth_service.model.entity.User;
 import com.regain.auth_service.service.jwt.JwtFilter;
+import com.regain.auth_service.service.role.IRoleService;
+import com.regain.auth_service.service.user.IAuthService;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,13 +22,22 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 
+import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
 
 @Configuration
 public class SecurityConfig {
 
     @Autowired
     private JwtFilter jwtFilter;
+
+    @Autowired
+    IRoleService   roleService;
+
+    @Autowired
+    private IAuthService authService;
 
     @Bean
     PasswordEncoder passwordEncoder() {  // Mã hóa password
@@ -33,6 +47,20 @@ public class SecurityConfig {
     @Bean // Xác thực người dùng
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
+    }
+
+    @PostConstruct
+    public void init() throws IOException {
+        List<Role> roles = this.roleService.getAllRoles();
+        if (roles.isEmpty()) {
+            this.roleService.save(new Role("ROLE_ADMIN"));
+            this.roleService.save(new Role("ROLE_USER"));
+            this.roleService.save(new Role("ROLE_STAFF"));
+        }
+        Optional<User> userOptional = this.authService.findByUsername("admin");
+        if (userOptional.isEmpty()) {
+            this.authService.registerAdmin();
+        }
     }
 
     @Bean
@@ -57,5 +85,7 @@ public class SecurityConfig {
         http.csrf(AbstractHttpConfigurer::disable);
         return http.build();
     }
+
+
 
 }

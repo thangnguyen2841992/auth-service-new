@@ -5,9 +5,9 @@ import com.regain.auth_service.model.dto.LoginForm;
 import com.regain.auth_service.model.dto.RegisterForm;
 import com.regain.auth_service.model.entity.Role;
 import com.regain.auth_service.model.entity.User;
-import com.regain.auth_service.repository.IRoleRepository;
 import com.regain.auth_service.repository.IUserRepository;
 import com.regain.auth_service.service.jwt.JwtService;
+import com.regain.auth_service.service.role.IRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -18,6 +18,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -25,6 +26,7 @@ import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
@@ -34,7 +36,7 @@ public class AuthServiceImpl implements IAuthService {
     private IUserRepository userRepository;
 
     @Autowired
-    private IRoleRepository roleRepository;
+    private IRoleService roleService;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -55,12 +57,12 @@ public class AuthServiceImpl implements IAuthService {
     @Override
     public Object registerUser(RegisterForm registerForm) throws IOException {
         String messageFailed = "";
-
+        boolean isValidPassword = isValidPassword(registerForm.getPassword());
         boolean isExistUsername = this.userRepository.existsByUsername(registerForm.getUsername());
         boolean isExistEmail = this.userRepository.existsByEmail(registerForm.getEmail());
         boolean isExistPhoneNumber = this.userRepository.existsByPhoneNumber(registerForm.getPhoneNumber());
         boolean isMatchedPassword = registerForm.getConfirmPassword().equals(registerForm.getPassword());
-        if (!isExistUsername && isMatchedPassword && !isExistEmail && !isExistPhoneNumber) {
+        if (!isExistUsername && isMatchedPassword && !isExistEmail && !isExistPhoneNumber && isValidPassword) {
             User newUser = new User();
             SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
             try {
@@ -80,6 +82,9 @@ public class AuthServiceImpl implements IAuthService {
             newUser.setActive(false);
             newUser.setGender(registerForm.getGender());
             newUser.setAvatar(AVATAR_DEFAULT);
+            newUser.setRoles(getRoleUser());
+            newUser.setDateCreated(new Date());
+            newUser.setBlock(false);
             return this.userRepository.save(newUser);
         } else {
             if (isExistUsername) {
@@ -89,7 +94,10 @@ public class AuthServiceImpl implements IAuthService {
                 messageFailed += " Email is existed!";
             }
             if (isExistPhoneNumber) {
-                messageFailed +=  " Phone number is existed!";
+                messageFailed += " Phone number is existed!";
+            }
+            if (!isValidPassword) {
+                messageFailed += " Password is not valid!";
             }
             if (!isMatchedPassword) {
                 messageFailed += " Password is not matched!";
@@ -97,6 +105,26 @@ public class AuthServiceImpl implements IAuthService {
             return messageFailed;
         }
 
+    }
+
+    @Override
+    public void registerAdmin() throws IOException {
+        User newUser = new User();
+        newUser.setUsername("admin");
+        newUser.setFirstName("Order");
+        newUser.setLastName("Admin");
+        newUser.setPassword(new BCryptPasswordEncoder().encode("thuThuy@1"));
+        newUser.setRoles(getRoleAdmin());
+        newUser.setActive(true);
+        newUser.setCodeActive(createActiveCode());
+        newUser.setDateCreated(new Date());
+        newUser.setEmail("nguyenthiquy29tbdl@gmail.com");
+        newUser.setPhoneNumber("0989712888");
+        newUser.setBirthday(new Date());
+        newUser.setGender(0);
+        newUser.setAvatar(AVATAR_DEFAULT);
+        newUser.setBlock(false);
+        this.userRepository.save(newUser);
     }
 
     @Override
@@ -108,8 +136,20 @@ public class AuthServiceImpl implements IAuthService {
             );
             // Nếu xác thực thành công, tạo token JWT
             if (authentication.isAuthenticated()) {
-                final String jwt = jwtService.generateToken(loginForm.getUsername());
-                return ResponseEntity.ok(new JwtResponse(jwt));
+                Optional<User> user = this.userRepository.findByUsername(loginForm.getUsername());
+                if (user.isPresent()) {
+                    if (!user.get().isActive()) {
+                        return ResponseEntity.badRequest().body("Account is not active");
+                    }
+                    if (user.get().isBlock()) {
+                        return ResponseEntity.badRequest().body("Account is blocked");
+                    }
+                    user.get().setLastLogin(new Date());
+                    this.userRepository.save(user.get());
+                    final String jwt = jwtService.generateToken(loginForm.getUsername());
+                    return ResponseEntity.ok(new JwtResponse(jwt));
+                }
+
             }
         } catch (AuthenticationException e) {
             // Xác thực không thành công, trả về lỗi hoặc thông báo
@@ -123,6 +163,7 @@ public class AuthServiceImpl implements IAuthService {
         User user = this.userRepository.findByUsername(username).orElseThrow(() -> new UsernameNotFoundException(username));
         return new org.springframework.security.core.userdetails.User(user.getUsername(), user.getPassword(), rolesToAuthorities(user.getRoles()));
     }
+
     private String createActiveCode() {
         return UUID.randomUUID().toString();
     }
@@ -130,10 +171,25 @@ public class AuthServiceImpl implements IAuthService {
     private Collection<? extends GrantedAuthority> rolesToAuthorities(Collection<Role> roles) {
         return roles.stream().map(role -> new SimpleGrantedAuthority(role.getRoleName())).collect(Collectors.toList());
     }
+
     private Set<Role> getRoleUser() {
         Set<Role> roles = new HashSet<>();
-        Optional<Role> roleOptional = this.roleRepository.findByRoleName("ROLE_USER");
+        Optional<Role> roleOptional = this.roleService.findByRoleName("ROLE_USER");
         roleOptional.ifPresent(roles::add);
         return roles;
+    }
+
+    private Set<Role> getRoleAdmin() {
+        Set<Role> roles = new HashSet<>();
+        Optional<Role> roleOptional = this.roleService.findByRoleName("ROLE_ADMIN");
+        roleOptional.ifPresent(roles::add);
+        return roles;
+    }
+
+    public static boolean isValidPassword(String password) {
+        // Regex pattern
+        String regex = "^(?=.*[0-9])(?=.*[A-Z])(?=.*[@#$%^&+=!])(?=.{8,}).*";
+        Pattern pattern = Pattern.compile(regex);
+        return pattern.matcher(password).matches();
     }
 }

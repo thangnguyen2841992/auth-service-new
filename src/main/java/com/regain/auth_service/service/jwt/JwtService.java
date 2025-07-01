@@ -26,7 +26,6 @@ public class JwtService {
     @Autowired
     private IAuthService userService;
 
-
     //Tạo token dựa trên username
     public String generateToken(String username) {
         Map<String, Object> claims = new HashMap<>();
@@ -65,7 +64,6 @@ public class JwtService {
         } else {
             return "User not found";
         }
-
     }
 
     private String generateToken(String username, Map<String, Object> claims) {
@@ -117,6 +115,4 @@ public class JwtService {
         System.out.println(username);
         return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
     }
-
-
 }
