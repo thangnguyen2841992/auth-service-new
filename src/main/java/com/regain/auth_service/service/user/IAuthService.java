@@ -13,6 +13,7 @@ public interface IAuthService extends UserDetailsService {
     Optional<User> findByUsername(String username);
 
     Object registerUser(RegisterForm registerForm) throws IOException;
+    Object registerStaff(RegisterForm registerForm) throws IOException;
     void registerAdmin() throws IOException;
 
     ResponseEntity<?> login(LoginForm loginForm);

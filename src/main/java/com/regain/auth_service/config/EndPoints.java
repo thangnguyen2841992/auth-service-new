@@ -8,6 +8,10 @@ public class EndPoints {
     public static final String[] PUBLIC_POST = {
             "/auth-api/**"
     };
+
+    public static final String[] ADMIN_POST = {
+            "/admin-api/**"
+    };
     public static final String FRONT_END_HOST = "http://localhost:3000";
 
 }

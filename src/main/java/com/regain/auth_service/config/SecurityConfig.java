@@ -69,6 +69,7 @@ public class SecurityConfig {
                 config -> config
                         .requestMatchers(HttpMethod.GET, EndPoints.PUBLIC_GET).permitAll()
                         .requestMatchers(HttpMethod.POST, EndPoints.PUBLIC_POST).permitAll()
+                        .requestMatchers(HttpMethod.POST, EndPoints.ADMIN_POST).hasRole("ADMIN")
         );
         http.cors(cors -> {
             cors.configurationSource(request -> {
@@ -85,7 +86,5 @@ public class SecurityConfig {
         http.csrf(AbstractHttpConfigurer::disable);
         return http.build();
     }
-
-
 
 }

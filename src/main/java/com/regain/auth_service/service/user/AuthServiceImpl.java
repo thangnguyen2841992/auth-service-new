@@ -82,7 +82,59 @@ public class AuthServiceImpl implements IAuthService {
             newUser.setActive(false);
             newUser.setGender(registerForm.getGender());
             newUser.setAvatar(AVATAR_DEFAULT);
-            newUser.setRoles(getRoleUser());
+            newUser.setRoles(getRole("ROLE_USER"));
+            newUser.setDateCreated(new Date());
+            newUser.setBlock(false);
+            return this.userRepository.save(newUser);
+        } else {
+            if (isExistUsername) {
+                messageFailed += " Username is existed!";
+            }
+            if (isExistEmail) {
+                messageFailed += " Email is existed!";
+            }
+            if (isExistPhoneNumber) {
+                messageFailed += " Phone number is existed!";
+            }
+            if (!isValidPassword) {
+                messageFailed += " Password is not valid!";
+            }
+            if (!isMatchedPassword) {
+                messageFailed += " Password is not matched!";
+            }
+            return messageFailed;
+        }
+    }
+
+    @Override
+    public Object registerStaff(RegisterForm registerForm) throws IOException {
+        String messageFailed = "";
+        boolean isValidPassword = isValidPassword(registerForm.getPassword());
+        boolean isExistUsername = this.userRepository.existsByUsername(registerForm.getUsername());
+        boolean isExistEmail = this.userRepository.existsByEmail(registerForm.getEmail());
+        boolean isExistPhoneNumber = this.userRepository.existsByPhoneNumber(registerForm.getPhoneNumber());
+        boolean isMatchedPassword = registerForm.getConfirmPassword().equals(registerForm.getPassword());
+        if (!isExistUsername && isMatchedPassword && !isExistEmail && !isExistPhoneNumber && isValidPassword) {
+            User newUser = new User();
+            SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+            try {
+                Date birthDate = formatter.parse(registerForm.getBirthDate());
+                newUser.setBirthday(birthDate);
+            } catch (ParseException e) {
+                throw new RuntimeException("Invalid birthday");
+            }
+            newUser.setFirstName(registerForm.getFirstName());
+            newUser.setLastName(registerForm.getLastName());
+            newUser.setUsername(registerForm.getUsername());
+            newUser.setEmail(registerForm.getEmail());
+            newUser.setPassword(passwordEncoder.encode(registerForm.getPassword()));
+            newUser.setPhoneNumber(registerForm.getPhoneNumber());
+            newUser.setAddress(registerForm.getAddress());
+            newUser.setCodeActive(createActiveCode());
+            newUser.setActive(true);
+            newUser.setGender(registerForm.getGender());
+            newUser.setAvatar(AVATAR_DEFAULT);
+            newUser.setRoles(getRole("ROLE_STAFF"));
             newUser.setDateCreated(new Date());
             newUser.setBlock(false);
             return this.userRepository.save(newUser);
@@ -113,7 +165,7 @@ public class AuthServiceImpl implements IAuthService {
         newUser.setFirstName("Order");
         newUser.setLastName("Admin");
         newUser.setPassword(new BCryptPasswordEncoder().encode("thuThuy@1"));
-        newUser.setRoles(getRoleAdmin());
+        newUser.setRoles(getRole("ROLE_ADMIN"));
         newUser.setActive(true);
         newUser.setCodeActive(createActiveCode());
         newUser.setDateCreated(new Date());
@@ -171,19 +223,13 @@ public class AuthServiceImpl implements IAuthService {
         return roles.stream().map(role -> new SimpleGrantedAuthority(role.getRoleName())).collect(Collectors.toList());
     }
 
-    private Set<Role> getRoleUser() {
+    private Set<Role> getRole(String roleName) {
         Set<Role> roles = new HashSet<>();
-        Optional<Role> roleOptional = this.roleService.findByRoleName("ROLE_USER");
+        Optional<Role> roleOptional = this.roleService.findByRoleName(roleName);
         roleOptional.ifPresent(roles::add);
         return roles;
     }
 
-    private Set<Role> getRoleAdmin() {
-        Set<Role> roles = new HashSet<>();
-        Optional<Role> roleOptional = this.roleService.findByRoleName("ROLE_ADMIN");
-        roleOptional.ifPresent(roles::add);
-        return roles;
-    }
 
     public static boolean isValidPassword(String password) {
         // Regex pattern
