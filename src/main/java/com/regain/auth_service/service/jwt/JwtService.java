@@ -9,6 +9,7 @@ import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
@@ -21,7 +22,9 @@ public class JwtService {
     private final String ROLE_ADMIN = "ROLE_ADMIN";
     private final String ROLE_USER = "ROLE_USER";
     private final String ROLE_STAFF = "ROLE_STAFF";
-    private final long EXPIRATION_TIME = 5 * 60 * 1000;
+
+    @Value("${expiration.time}")
+    private long EXPIRATION_TIME;
 
     @Autowired
     private IAuthService userService;

@@ -9,6 +9,7 @@ import com.regain.auth_service.repository.IUserRepository;
 import com.regain.auth_service.service.jwt.JwtService;
 import com.regain.auth_service.service.role.IRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -46,6 +47,9 @@ public class AuthServiceImpl implements IAuthService {
 
     @Autowired
     private AuthenticationManager authenticationManager;
+
+    @Value("${expiration.time}")
+    private long EXPIRATION_TIME;
 
     private static final String AVATAR_DEFAULT = "https://firebasestorage.googleapis.com/v0/b/thangdeptrai-9efec.appspot.com/o/images%2Favatar2.jpg?alt=media&token=3ca1a511-1e03-448a-9de2-6ea880e5071c";
 
@@ -198,7 +202,7 @@ public class AuthServiceImpl implements IAuthService {
                     user.get().setLastLogin(new Date());
                     this.userRepository.save(user.get());
                     final String jwt = jwtService.generateToken(loginForm.getUsername());
-                    return ResponseEntity.ok(new JwtResponse(jwt));
+                    return ResponseEntity.ok(new JwtResponse(jwt, EXPIRATION_TIME));
                 }
 
             }
