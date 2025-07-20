@@ -63,6 +63,7 @@ public class JwtService {
             claims.put("avatar", user.getAvatar());
             claims.put("email", user.getEmail());
             claims.put("phoneNumber", user.getPhoneNumber());
+            claims.put("address", user.getAddress());
             return generateToken(user.getUsername(), claims);
 
         } else {
